@@ -4,15 +4,13 @@ import registerRouters from './api/routes';
 import morgan from 'morgan';
 import db from './db';
 import cors from 'cors';
-import path from 'path';
 
 // import { buildSchema } from 'graphql';
 
 const app = express();
 app.use(cors());
-app.use(bodyParser.urlencoded({extended: true, limit : '50mb', parameterLimit: 1000000}));               
-app.use(bodyParser.text());                                    
-app.use(bodyParser.json({ type: 'application/json', limit : '50mb'}));  
+app.use(bodyParser.urlencoded({extended: true}));               
+app.use(bodyParser.json({ type: 'application/json'}));  
 app.use(morgan((process.env.ENV == 'prod' ? 'tiny' : 'dev')));
 
 registerRouters(app);

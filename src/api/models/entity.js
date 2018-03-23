@@ -19,9 +19,25 @@ const entitySchema = new Schema({
         return email;
       }
      },
+    password: { type: String },
     updated: { type: Date, default: Date.now },
     created: { type: Date, default: Date.now },
     active: { type: Number, min: 0, max: 1, default: 1 },
+    phone: { type: String },
+    providers: [
+      {
+        name: { type: String, required: true },
+        ref: { type: String, required: true },
+        created: { type: Date, default: Date.now },
+      }
+    ],
+    codes: [
+      {
+        cod: { type: String, required: true },
+        systemType: { type: String, required: true },
+        created: { type: Date, default: Date.now },
+      }
+    ],
   }, 
   { collection:"EntityList" });
 
@@ -35,7 +51,7 @@ entitySchema
 
 entitySchema.pre('save', function(next) {
   const entity = this;
-
+  delete entity.name;
   // Dont changce the email
   if(entity.isModified('email')){
     this.email = this._email || this.email;

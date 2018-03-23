@@ -1,103 +1,147 @@
 import Entity from './../models/entity';
 import jwt from 'jsonwebtoken';
 import { SECRET_KEY } from './../config/env';
+import erpThird from '../third/erp';
 
-// const getAll = () => {
-//   return Entity.find()
-//     .then(entities => ({ status: true, code: 200, entities } ))
-//     .catch(err => ({ code: 400, status: false, error: "Something went wrong" } ));
+const _prepareProviderData = data =>{
+  return {
+    name: data.hasOwnProperty('password') && data.password ? 'email' : data.providerName,
+    ref: data.hasOwnProperty('password') && data.password ? data.email : data.providerIdentifier,
+  }
+}
 
-// };
-// const get = (id) => {
-//   return Entity.findOne({_id: id}, { password: 0 })
-//     .then(result => ({ status: true, code: 200, result } ))
-//     .catch(err => ({ code: 400, status: false, error: "Something went wrong" } ));
-// };
-
-const save = (data) => {
-  const model = new Entity(data);
-
-  return model.save()
-    .then(result => (
-      {
-        result, 
-        status: true, 
-        code: 200, 
-        token: jwt.sign({ id: result._id }, SECRET_KEY, {
-          expiresIn: 86400 // expires in 24 hours
-        }),
-      }
-    ))
-    .catch(err => ( { erro: err, result: false, code: 400 } ));
-};
-
-
-// const update = (id, data = {}) => {
-//   return Entity.findOne({_id :id})
-//     .then(foundObject => {
-//       if(!foundObject) return { code: 404, status: false, error: "Entity not found", err };
-//       if(data.password == undefined || data.password== ''){
-//         delete data.password;
-//       }
-//       foundObject = Object.assign(foundObject, data);
-//       return foundObject.save()
-//               .then(updated => ( { status: true, code: 200, message: "Status updated successfully", updated} ))
-//               .catch(err => ( { code: 400, status: false, error: "Status not updated", err } ));
-//     });
-// };
-
-// const remove = id => {
-//   return Entity.remove({_id: id})
-//     .then(entities => ( { status: true, code: 200, message: "Entity deleted successfully!!" } ))
-//     .catch(err => ( { code: 400, status: false, error: "Deleting entity is not successfull" } ));
-// };
-
-
-const login = (email, password) => {
-  return Entity.findOne({ email })
-    .then(entity => {
-     const isMatch =  entity.comparePassword(password);
-    if(!entity || !isMatch) return { status: false, code: 404, message: "Incorrect credentials for entity" };
-
-    const token = jwt.sign({ id: entity._id }, SECRET_KEY, {
-      expiresIn: 86400 // expires in 24 hours
-    });
-    return { status: true, code: 202, message: "Logged!", token, result };
+const updateDocumentTreeCodes = (email, value) => {
+  Entity.findOne({ email }, (err, entity) => {
+    if(err){
+    }
+    const existCode = entity.codes.some(code => code.cod == value.cod && code.systemType == value.systemType)
+    console.log(existCode, value);
+    if(!existCode){
+      entity.codes.push(value);
+      entity.save();
+    }
+  })
+}
+const updateDocumentTreeProviders = async (email, value) => {
+  
+  Entity.findOne({ email }, (err, entity) => {
+    if(err){
+    }
+    const existProvider = entity.providers.some(code => code.name == value.name && code.ref == value.ref)
+    console.log(existProvider);
+    if(!existProvider){
+      entity.providers.push(value);
+      entity.save();
+      return entity;
+    }
+  })
+}
+const save = async (data) => {
+  try {
+    const entity = await Entity.findOne({ email: data.email });
+    if(entity){
       
-    })
-    .catch(err => {
-      return { status: false, code: 403, message: "Incorrect credentials for entity", err };
-    });
+      if(data.hasOwnProperty('password') && data.password){
+        
+        const isMatch =  entity.comparePassword(data.password);
+
+        if(!entity || !isMatch) return { status: false, code: 404, message: "Incorrect credentials for entity" };
+    
+        const token = _generateToken(entity._id);
+        // if(entity.codes.length){
+
+        // }
+        return { status: true, code: 202, message: "Logged!", token, entity };
+
+      }else if(data.providers.length){
+        try{
+          const token = _generateToken(entity._id);
+          const resultEntity = await updateDocumentTreeProviders(data.email, data.providers[0]);
+          return { status: true, code: 202, message: "Logged with Social!", token, entity };
+          
+        }catch(err){
+          return { erro: err, status: false, code: 403, message: "Incorrect credentials for social" };
+        }
+      }else{
+        return { status: false, code: 403, message: "Incorrect credentials for social" };
+      }
+    }else{ 
+      const model = new Entity(data);
+      try{
+        const modelResult = await model.save();
+        const dataInstall = {
+                ...data,
+                ...modelResult
+              }
+              // const resultInstala = await erpThird.instalar(dataInstall);
+              const code = {
+                name: 'email',
+                systemType: data.system,
+                cod: Math.random(), // resultInstala.codCLient
+              }
+
+              updateDocumentTreeCodes(modelResult.email, code);
+              modelResult.codes.push(code);
+        return {
+                modelResult,
+                // ...resultInstala, 
+                status: true, 
+                code: 200, 
+                token: jwt.sign({ id: modelResult._id }, SECRET_KEY, {
+                  expiresIn: 86400 // expires in 24 hours
+                }),
+              }
+      }
+      catch(err){
+        return  { erro: err, result: false, code: 400 }
+      }
+    }
+
+  } catch (err) {
+      return  { erro: err, result: false, code: 400 }
+  }
+  
 };
 
+
+const _generateToken = _id => {
+  return jwt.sign({ id: _id }, SECRET_KEY, {
+    expiresIn: 86400
+  });
+}
+
+const _prepareData = data => {
+  const dataToSave = {
+    ...data,
+  };
+  if(data.providerName && data.providerIdentifier){
+    dataToSave.providers =[
+      {
+        name: data.providerName,
+        ref: data.providerIdentifier
+      }
+    ];
+  }
+
+  delete dataToSave.providerName;
+  delete dataToSave.providerIdentifier;
+  return dataToSave;
+}
+const login = (data) => {
+  const dataSave = _prepareData(data);
+  return save(dataSave);
+
+};
+
+const getSystems = (codes) => {
+
+}
 const logout = () => ({ status: true, code: 200, message: "Success!", token: null });
 
-const avatarUpdate = (id, avatar = {}) => {
-  return Entity.findOne({_id :id})
-    .then(foundObject => {
-      if(!foundObject) return { code: 404, status: false, error: "Entity not found", err };
-
-      foundObject.avatar = `avatars/${avatar.filename}`;
-      return foundObject.save()
-        .then(updated => ( { status: true, code: 200, message: "Status updated successfully", updated} ))
-        .catch(err => ( { code: 400, status: false, error: "Status not updated", err } ));
-    });
-};
-
-const avatarGet = (id) => {
-  return Entity.findById({ _id: id })
-    .then(searched => ( { avatar: searched.avatar, status: searched.avatar != undefined, code: 200, message: "Successfully" } ))
-    .catch(err => ( { code: 400, status: false, error: "Status not updated", err } ));
-};
 
 export {
   save,
-  update,
-  remove,
-  getAll,
-  get,
   login,
   logout,
-  avatarUpdate,
-  avatarGet
+  getSystems,
 };

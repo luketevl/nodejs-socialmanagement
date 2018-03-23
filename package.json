@@ -10,7 +10,8 @@
     "test:coverage": "nyc npm test",
     "clear": "rimraf lib",
     "coveralls": "npm run test:coverage && nyc report --reporter=text-lcov | coveralls",
-    "start": "PORT=3000 nodemon --exec babel-node src/server.js",
+    "start": "PORT=3005 nodemon --inspect --exec babel-node src/server.js",
+    "debug": "babel-node-debug src/server.js",
     "build": "babel lib -d dist",
     "serve": "node dist/server.js"
   },
@@ -44,6 +45,7 @@
   },
   "dependencies": {
     "ajv": "^6.1.1",
+    "babel-plugin-transform-object-rest-spread": "^6.26.0",
     "babel-runtime": "^6.26.0",
     "bcrypt": "^1.0.3",
     "body-parser": "^1.18.2",
@@ -54,7 +56,7 @@
     "mongoose": "^5.0.4",
     "morgan": "^1.9.0",
     "multer": "^1.3.0",
-    "node-fetch": "^2.0.0",
+    "node-fetch": "^2.1.1",
     "sinon": "^4.3.0",
     "sinon-chai": "^2.14.0",
     "sinon-mongoose": "^2.0.2",
