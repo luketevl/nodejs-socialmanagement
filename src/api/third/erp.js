@@ -1,5 +1,6 @@
 import fetch from 'node-fetch';
 import { URL_INSTALL } from '../config/env';
+import { objectToQuery } from '../utils/common';
 
 const _generateSystemName = (system) =>{
   const now = new Date();
@@ -16,19 +17,18 @@ const instalar = data => {
     email_empresa: data.email,
     tipo_plano: 'TRIAL',
   };
-  let dataInstallArray = [];
+  let dataInstallArray = objectToQuery(dataInstall);
 
-  for(const key in dataInstall){
-    dataInstallArray.push(`${key}=${dataInstall[key]}`);
-  }
   return fetch(URL_INSTALL, {
     method: 'POST',
-    body: dataInstallArray.join('&'),
+    body: dataInstallArray,
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
   },
   }).then(res => res.json(), err => err)
 }
+
+
 
 export default {
   instalar
