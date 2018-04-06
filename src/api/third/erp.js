@@ -35,6 +35,8 @@ catch(err){
 
 
 
+
+
 export default {
   instalar
 }
